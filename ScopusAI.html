@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article Citation Finder</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #34495e;
+            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--dark);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .logo i {
+            font-size: 2.8rem;
+            color: var(--secondary);
+            background: white;
+            padding: 18px;
+            border-radius: 50%;
+            box-shadow: var(--card-shadow);
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: var(--primary);
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        header p {
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+            color: var(--dark);
+            opacity: 0.9;
+        }
+        
+        .search-box {
+            background: white;
+            border-radius: 18px;
+            padding: 30px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 30px;
+            transition: var(--transition);
+        }
+        
+        .input-group {
+            display: flex;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .input-group input {
+            flex: 1;
+            padding: 18px 25px;
+            border: 2px solid #e0e6ed;
+            border-radius: 12px 0 0 12px;
+            font-size: 1.1rem;
+            outline: none;
+            transition: var(--transition);
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .input-group input:focus {
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2), inset 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .input-group button {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 0 40px;
+            border-radius: 0 12px 12px 0;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+        }
+        
+        .input-group button:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .doi-examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 25px;
+            justify-content: center;
+        }
+        
+        .doi-example {
+            background: #e1f0fa;
+            color: var(--secondary);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid #d0e5f5;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+        
+        .doi-example:hover {
+            background: var(--secondary);
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .result-container {
+            background: white;
+            border-radius: 18px;
+            padding: 35px;
+            box-shadow: var(--card-shadow);
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .article-header {
+            margin-bottom: 30px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .article-title {
+            font-size: 1.9rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+        
+        .article-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .meta-item {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 18px;
+            transition: var(--transition);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.05);
+        }
+        
+        .meta-label {
+            font-size: 0.95rem;
+            color: #7f8c8d;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .meta-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--dark);
+            word-break: break-word;
+        }
+        
+        .citation-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+            border-radius: 15px;
+            padding: 30px 25px;
+            text-align: center;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border: 1px solid #eaeaea;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+        }
+        
+        .stat-card.total::before {
+            background: var(--secondary);
+        }
+        
+        .stat-card.exclude-self::before {
+            background: var(--accent);
+        }
+        
+        .stat-icon {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+        
+        .total .stat-icon {
+            color: var(--secondary);
+        }
+        
+        .exclude-self .stat-icon {
+            color: var(--accent);
+        }
+        
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 15px 0;
+            transition: var(--transition);
+            letter-spacing: -1px;
+        }
+        
+        .total .stat-value {
+            color: var(--secondary);
+            text-shadow: 0 2px 5px rgba(52, 152, 219, 0.2);
+        }
+        
+        .exclude-self .stat-value {
+            color: var(--accent);
+            text-shadow: 0 2px 5px rgba(231, 76, 60, 0.2);
+        }
+        
+        .stat-label {
+            font-size: 1.3rem;
+            color: var(--dark);
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .stat-description {
+            margin-top: 10px;
+            color: #7f8c8d;
+            font-size: 1rem;
+            max-width: 280px;
+            margin: 10px auto 0;
+            line-height: 1.5;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 50px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 30px;
+        }
+        
+        .spinner {
+            border: 5px solid rgba(52, 152, 219, 0.2);
+            border-left-color: var(--secondary);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 25px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .loading p {
+            font-size: 1.2rem;
+            color: var(--dark);
+            font-weight: 500;
+        }
+        
+        .error-message {
+            background: #fadbd8;
+            color: #c0392b;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            display: none;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        .error-message i {
+            margin-right: 10px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: var(--dark);
+            font-size: 0.95rem;
+            padding: 20px;
+            opacity: 0.8;
+        }
+        
+        .api-info {
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .input-group {
+                flex-direction: column;
+            }
+            
+            .input-group input {
+                border-radius: 12px;
+                margin-bottom: 10px;
+                padding: 16px 20px;
+            }
+            
+            .input-group button {
+                border-radius: 12px;
+                padding: 16px;
+                justify-content: center;
+            }
+            
+            .article-title {
+                font-size: 1.6rem;
+            }
+            
+            .stat-value {
+                font-size: 2.5rem;
+            }
+            
+            .stat-label {
+                font-size: 1.2rem;
+            }
+            
+            .citation-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-chart-line"></i>
+                <h1>Citation Metrics Finder</h1>
+            </div>
+            <p>Discover citation metrics for any research article using its Digital Object Identifier (DOI)</p>
+        </header>
+        
+        <main>
+            <div class="search-box">
+                <div class="input-group">
+                    <input type="text" id="doiInput" placeholder="Enter article DOI (e.g., 10.5194/bg-18-2755-2021)">
+                    <button id="searchButton">
+                        <i class="fas fa-search"></i>
+                        Get Citation Metrics
+                    </button>
+                </div>
+                
+                <div class="doi-examples">
+                    <div class="doi-example" data-doi="10.5194/bg-18-2755-2021">
+                        <i class="fas fa-lightbulb"></i>
+                        Sample DOI: 10.5194/bg-18-2755-2021
+                    </div>
+                    <div class="doi-example" data-doi="10.3389/fmars.2021.615929">
+                        <i class="fas fa-lightbulb"></i>
+                        Sample DOI: 10.3389/fmars.2021.615929
+                    </div>
+                </div>
+                
+                <div class="error-message" id="errorMessage">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="errorText"></span>
+                </div>
+            </div>
+            
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p>Retrieving citation data from Elsevier API...</p>
+            </div>
+            
+            <div class="result-container" id="resultContainer">
+                <div class="article-header">
+                    <h2 class="article-title" id="articleTitle"></h2>
+                    <div class="article-meta">
+                        <div class="meta-item">
+                            <span class="meta-label"><i class="fas fa-tag"></i> Publication Type</span>
+                            <span class="meta-value" id="articleType"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label"><i class="fas fa-calendar"></i> Publication Year</span>
+                            <span class="meta-value" id="articleYear"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label"><i class="fas fa-fingerprint"></i> DOI</span>
+                            <span class="meta-value" id="articleDOI"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="citation-stats">
+                    <div class="stat-card total">
+                        <div class="stat-icon">
+                            <i class="fas fa-quote-right"></i>
+                        </div>
+                        <div class="stat-label">Total Citations</div>
+                        <div class="stat-value" id="totalCitation"></div>
+                        <div class="stat-description">Includes all citations to this research article</div>
+                    </div>
+                    
+                    <div class="stat-card exclude-self">
+                        <div class="stat-icon">
+                            <i class="fas fa-user-friends"></i>
+                        </div>
+                        <div class="stat-label">Citations Excluding Self-Citations</div>
+                        <div class="stat-value" id="excludeSelfCitation"></div>
+                        <div class="stat-description">Citations from other researchers only</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Article Citation Finder &copy; 2023 | Data provided by Elsevier API</p>
+            <div class="api-info">
+                <i class="fas fa-info-circle"></i> Retrieves real-time citation metrics for research articles
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const doiInput = document.getElementById('doiInput');
+            const searchButton = document.getElementById('searchButton');
+            const resultContainer = document.getElementById('resultContainer');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const errorMessage = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            
+            const articleTitle = document.getElementById('articleTitle');
+            const articleType = document.getElementById('articleType');
+            const articleYear = document.getElementById('articleYear');
+            const articleDOI = document.getElementById('articleDOI');
+            const totalCitation = document.getElementById('totalCitation');
+            const excludeSelfCitation = document.getElementById('excludeSelfCitation');
+            
+            const sampleDois = document.querySelectorAll('.doi-example');
+            
+            // API configuration
+            const apiKey = "7f59af901d2d86f78a1fd60c1bf9426a";
+            
+            // Sample DOI click handler
+            sampleDois.forEach(sampleDoi => {
+                sampleDoi.addEventListener('click', function() {
+                    doiInput.value = this.getAttribute('data-doi');
+                    searchCitations();
+                });
+            });
+            
+            // Search button click handler
+            searchButton.addEventListener('click', searchCitations);
+            
+            // Handle Enter key in input field
+            doiInput.addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    searchCitations();
+                }
+            });
+            
+            async function searchCitations() {
+                const doi = doiInput.value.trim();
+                
+                if (!doi) {
+                    showError('Please enter a DOI (Digital Object Identifier)');
+                    return;
+                }
+                
+                // Validate DOI format
+                if (!doi.startsWith('10.')) {
+                    showError('Please enter a valid DOI (should start with "10.")');
+                    return;
+                }
+                
+                // Show loading indicator
+                loadingIndicator.style.display = 'block';
+                resultContainer.style.display = 'none';
+                errorMessage.style.display = 'none';
+                
+                try {
+                    // Fetch citation counts in parallel
+                    const [totalCitations, excludeSelfCitations] = await Promise.all([
+                        fetchCitationCount(doi, false),
+                        fetchCitationCount(doi, true)
+                    ]);
+                    
+                    // Fetch article metadata from citation response
+                    const metadata = await fetchArticleMetadata(doi);
+                    
+                    // Update UI with the retrieved data
+                    articleTitle.textContent = metadata.title || "Title not available";
+                    articleType.textContent = metadata.type || "Type not available";
+                    articleYear.textContent = metadata.year || "Year not available";
+                    articleDOI.textContent = doi;
+                    totalCitation.textContent = totalCitations;
+                    excludeSelfCitation.textContent = excludeSelfCitations;
+                    
+                    // Show results
+                    resultContainer.style.display = 'block';
+                    loadingIndicator.style.display = 'none';
+                } catch (error) {
+                    showError(error.message);
+                    loadingIndicator.style.display = 'none';
+                }
+            }
+            
+            async function fetchArticleMetadata(doi) {
+                try {
+                    const response = await fetch(`https://api.elsevier.com/content/abstract/citations?doi=${doi}&apiKey=${apiKey}&httpAccept=application%2Fjson`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Extract metadata from citation response
+                    const citeInfo = data['abstract-citations-response']?.citeInfoMatrix?.citeInfoMatrixXML?.citationMatrix?.citeInfo;
+                    
+                    if (!citeInfo || !citeInfo.length) {
+                        throw new Error('Article metadata not found in API response');
+                    }
+                    
+                    // Get the first citation info (should be the article itself)
+                    const articleData = Array.isArray(citeInfo) ? citeInfo[0] : citeInfo;
+                    
+                    return {
+                        title: articleData['dc:title'] || "Title not available",
+                        type: articleData.citationType?.$ || "Type not available",
+                        year: articleData['sort-year'] || "Year not available"
+                    };
+                } catch (error) {
+                    throw new Error(`Error retrieving metadata: ${error.message}`);
+                }
+            }
+            
+            async function fetchCitationCount(doi, excludeSelf = false) {
+                try {
+                    const url = `https://api.elsevier.com/content/abstract/citations?doi=${doi}&apiKey=${apiKey}${excludeSelf ? '&citation=exclude-self' : ''}&httpAccept=application%2Fjson`;
+                    const response = await fetch(url);
+                    
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status} ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Extract grandTotal from Elsevier API response
+                    const citeCountHeader = data['abstract-citations-response']?.citeColumnTotalXML?.citeCountHeader;
+                    
+                    if (!citeCountHeader || citeCountHeader.grandTotal === undefined) {
+                        throw new Error('Citation count not found in API response');
+                    }
+                    
+                    return citeCountHeader.grandTotal;
+                } catch (error) {
+                    throw new Error(`Error retrieving citation count: ${error.message}`);
+                }
+            }
+            
+            function showError(message) {
+                errorText.textContent = message;
+                errorMessage.style.display = 'block';
+                resultContainer.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
