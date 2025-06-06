@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Article Citation Finder</title>
+    <title>Citation Metrics Finder in Scopus</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary: #2c3e50;
@@ -12,6 +13,7 @@
             --accent: #e74c3c;
             --light: #ecf0f1;
             --dark: #34495e;
+            --success: #27ae60;
             --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             --transition: all 0.3s ease;
         }
@@ -30,11 +32,11 @@
             color: var(--dark);
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
         }
         
         .container {
-            max-width: 800px;
+            max-width: 1000px;
             width: 100%;
             margin: 0 auto;
         }
@@ -90,46 +92,89 @@
         
         .input-group {
             display: flex;
+            flex-direction: column;
             margin-bottom: 20px;
-            position: relative;
         }
         
-        .input-group input {
-            flex: 1;
+        #doiTextarea {
+            width: 100%;
+            height: 200px;
             padding: 18px 25px;
             border: 2px solid #e0e6ed;
-            border-radius: 12px 0 0 12px;
+            border-radius: 12px;
             font-size: 1.1rem;
             outline: none;
             transition: var(--transition);
             box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+            resize: vertical;
+            font-family: monospace;
+            line-height: 1.6;
         }
         
-        .input-group input:focus {
+        #doiTextarea:focus {
             border-color: var(--secondary);
             box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2), inset 0 2px 5px rgba(0,0,0,0.05);
         }
         
-        .input-group button {
-            background: var(--secondary);
-            color: white;
+        .input-group label {
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .input-group label i {
+            color: var(--secondary);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .button-group button {
+            padding: 15px 30px;
             border: none;
-            padding: 0 40px;
-            border-radius: 0 12px 12px 0;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 1.1rem;
             font-weight: 600;
             transition: var(--transition);
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        #searchButton {
+            background: var(--secondary);
+            color: white;
             box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
         }
         
-        .input-group button:hover {
+        #searchButton:hover {
             background: #2980b9;
             transform: translateY(-2px);
             box-shadow: 0 6px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        #downloadButton {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3);
+            display: none;
+        }
+        
+        #downloadButton:hover {
+            background: #219653;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(39, 174, 96, 0.4);
         }
         
         .doi-examples {
@@ -168,6 +213,7 @@
             box-shadow: var(--card-shadow);
             display: none;
             animation: fadeIn 0.5s ease;
+            overflow-x: auto;
         }
         
         @keyframes fadeIn {
@@ -175,136 +221,36 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        .article-header {
-            margin-bottom: 30px;
-            padding-bottom: 25px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
-        .article-title {
-            font-size: 1.9rem;
-            color: var(--primary);
-            margin-bottom: 20px;
-            line-height: 1.4;
-        }
-        
-        .article-meta {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-        
-        .meta-item {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 18px;
-            transition: var(--transition);
-            box-shadow: 0 3px 8px rgba(0,0,0,0.05);
-        }
-        
-        .meta-label {
-            font-size: 0.95rem;
-            color: #7f8c8d;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .meta-value {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--dark);
-            word-break: break-word;
-        }
-        
-        .citation-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-            margin-top: 30px;
-        }
-        
-        .stat-card {
-            background: linear-gradient(to bottom, #ffffff, #f8f9fa);
-            border-radius: 15px;
-            padding: 30px 25px;
-            text-align: center;
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-            border: 1px solid #eaeaea;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.12);
-        }
-        
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
+        .results-table {
             width: 100%;
-            height: 5px;
+            border-collapse: collapse;
+            margin-top: 20px;
         }
         
-        .stat-card.total::before {
-            background: var(--secondary);
-        }
-        
-        .stat-card.exclude-self::before {
-            background: var(--accent);
-        }
-        
-        .stat-icon {
-            font-size: 2.8rem;
-            margin-bottom: 15px;
-            opacity: 0.9;
-        }
-        
-        .total .stat-icon {
-            color: var(--secondary);
-        }
-        
-        .exclude-self .stat-icon {
-            color: var(--accent);
-        }
-        
-        .stat-value {
-            font-size: 3rem;
-            font-weight: 700;
-            margin: 15px 0;
-            transition: var(--transition);
-            letter-spacing: -1px;
-        }
-        
-        .total .stat-value {
-            color: var(--secondary);
-            text-shadow: 0 2px 5px rgba(52, 152, 219, 0.2);
-        }
-        
-        .exclude-self .stat-value {
-            color: var(--accent);
-            text-shadow: 0 2px 5px rgba(231, 76, 60, 0.2);
-        }
-        
-        .stat-label {
-            font-size: 1.3rem;
-            color: var(--dark);
+        .results-table th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            border-bottom: 2px solid #e0e6ed;
+            color: var(--primary);
             font-weight: 600;
-            margin-bottom: 5px;
+            position: sticky;
+            top: 0;
         }
         
-        .stat-description {
-            margin-top: 10px;
-            color: #7f8c8d;
-            font-size: 1rem;
-            max-width: 280px;
-            margin: 10px auto 0;
-            line-height: 1.5;
+        .results-table td {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+            color: var(--dark);
+        }
+        
+        .results-table tr:hover td {
+            background-color: #f5f9ff;
+        }
+        
+        .results-table .doi-cell {
+            font-family: monospace;
+            font-size: 0.95rem;
         }
         
         .loading {
@@ -352,6 +298,48 @@
             margin-right: 10px;
         }
         
+        .progress-container {
+            margin-top: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 10px;
+            display: none;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: var(--secondary);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 1rem;
+            color: var(--dark);
+            display: none;
+        }
+        
+        .status-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-success {
+            color: var(--success);
+        }
+        
+        .status-error {
+            color: var(--accent);
+        }
+        
+        .status-loading {
+            color: var(--secondary);
+        }
+        
         footer {
             text-align: center;
             margin-top: 40px;
@@ -367,36 +355,17 @@
         }
         
         @media (max-width: 768px) {
-            .input-group {
-                flex-direction: column;
+            .button-group button {
+                min-width: 100%;
             }
             
-            .input-group input {
-                border-radius: 12px;
-                margin-bottom: 10px;
-                padding: 16px 20px;
+            .results-table th, .results-table td {
+                padding: 10px;
+                font-size: 0.9rem;
             }
             
-            .input-group button {
-                border-radius: 12px;
-                padding: 16px;
-                justify-content: center;
-            }
-            
-            .article-title {
-                font-size: 1.6rem;
-            }
-            
-            .stat-value {
-                font-size: 2.5rem;
-            }
-            
-            .stat-label {
-                font-size: 1.2rem;
-            }
-            
-            .citation-stats {
-                grid-template-columns: 1fr;
+            header h1 {
+                font-size: 2rem;
             }
         }
     </style>
@@ -408,29 +377,42 @@
                 <i class="fas fa-chart-line"></i>
                 <h1>Citation Metrics Finder</h1>
             </div>
-            <p>Discover citation metrics for any research article using its Digital Object Identifier (DOI)</p>
+            <p>Discover citation metrics for multiple research articles using their Digital Object Identifiers (DOIs)</p>
         </header>
         
         <main>
             <div class="search-box">
                 <div class="input-group">
-                    <input type="text" id="doiInput" placeholder="Enter article DOI (e.g., 10.5194/bg-18-2755-2021)">
+                    <label for="doiTextarea">
+                        <i class="fas fa-list"></i>
+                        Enter article DOIs (one per line)
+                    </label>
+                    <textarea id="doiTextarea" placeholder="Enter DOIs, one per line&#10;Example:&#10;10.1029/2004JC002692&#10;10.1029/2005JC002870&#10;10.1016/j.ocemod.2003.12.006"></textarea>
+                </div>
+                
+                <div class="button-group">
                     <button id="searchButton">
                         <i class="fas fa-search"></i>
-                        Get Citation Metrics
+                        Process DOIs
+                    </button>
+                    <button id="downloadButton">
+                        <i class="fas fa-file-excel"></i>
+                        Download Excel Report
                     </button>
                 </div>
                 
                 <div class="doi-examples">
-                    <div class="doi-example" data-doi="10.5194/bg-18-2755-2021">
+                    <div class="doi-example" id="sampleDois">
                         <i class="fas fa-lightbulb"></i>
-                        Sample DOI: 10.5194/bg-18-2755-2021
-                    </div>
-                    <div class="doi-example" data-doi="10.3389/fmars.2021.615929">
-                        <i class="fas fa-lightbulb"></i>
-                        Sample DOI: 10.3389/fmars.2021.615929
+                        Load Sample DOIs
                     </div>
                 </div>
+                
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                
+                <div class="progress-text" id="progressText">Processing: 0/0</div>
                 
                 <div class="error-message" id="errorMessage">
                     <i class="fas fa-exclamation-circle"></i>
@@ -440,52 +422,33 @@
             
             <div class="loading" id="loadingIndicator">
                 <div class="spinner"></div>
-                <p>Retrieving citation data from Elsevier API...</p>
+                <p id="loadingText">Retrieving citation data from Elsevier API...</p>
             </div>
             
             <div class="result-container" id="resultContainer">
-                <div class="article-header">
-                    <h2 class="article-title" id="articleTitle"></h2>
-                    <div class="article-meta">
-                        <div class="meta-item">
-                            <span class="meta-label"><i class="fas fa-tag"></i> Publication Type</span>
-                            <span class="meta-value" id="articleType"></span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label"><i class="fas fa-calendar"></i> Publication Year</span>
-                            <span class="meta-value" id="articleYear"></span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label"><i class="fas fa-fingerprint"></i> DOI</span>
-                            <span class="meta-value" id="articleDOI"></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="citation-stats">
-                    <div class="stat-card total">
-                        <div class="stat-icon">
-                            <i class="fas fa-quote-right"></i>
-                        </div>
-                        <div class="stat-label">Total Citations</div>
-                        <div class="stat-value" id="totalCitation"></div>
-                        <div class="stat-description">Includes all citations to this research article</div>
-                    </div>
-                    
-                    <div class="stat-card exclude-self">
-                        <div class="stat-icon">
-                            <i class="fas fa-user-friends"></i>
-                        </div>
-                        <div class="stat-label">Citations Excluding Self-Citations</div>
-                        <div class="stat-value" id="excludeSelfCitation"></div>
-                        <div class="stat-description">Citations from other researchers only</div>
-                    </div>
-                </div>
+                <h2 style="margin-bottom: 20px; color: var(--primary);">Results</h2>
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>DOI</th>
+                            <th>Title</th>
+                            <th>Publication Type</th>
+                            <th>Publication Year</th>
+                            <th>Total Citations</th>
+                            <th>Citations (Excl. Self)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody">
+                        <!-- Results will be populated here -->
+                    </tbody>
+                </table>
             </div>
         </main>
         
         <footer>
-            <p>Article Citation Finder &copy; 2023 | Data provided by Elsevier API</p>
+            <p>Citation Finder &copy; Developed on 6 June 2025 | Data provided by Elsevier API</p>
             <div class="api-info">
                 <i class="fas fa-info-circle"></i> Retrieves real-time citation metrics for research articles
             </div>
@@ -494,87 +457,212 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const doiInput = document.getElementById('doiInput');
+            const doiTextarea = document.getElementById('doiTextarea');
             const searchButton = document.getElementById('searchButton');
+            const downloadButton = document.getElementById('downloadButton');
             const resultContainer = document.getElementById('resultContainer');
+            const resultsTableBody = document.getElementById('resultsTableBody');
             const loadingIndicator = document.getElementById('loadingIndicator');
+            const loadingText = document.getElementById('loadingText');
             const errorMessage = document.getElementById('errorMessage');
             const errorText = document.getElementById('errorText');
-            
-            const articleTitle = document.getElementById('articleTitle');
-            const articleType = document.getElementById('articleType');
-            const articleYear = document.getElementById('articleYear');
-            const articleDOI = document.getElementById('articleDOI');
-            const totalCitation = document.getElementById('totalCitation');
-            const excludeSelfCitation = document.getElementById('excludeSelfCitation');
-            
-            const sampleDois = document.querySelectorAll('.doi-example');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const sampleDoisBtn = document.getElementById('sampleDois');
             
             // API configuration
             const apiKey = "7f59af901d2d86f78a1fd60c1bf9426a";
             
-            // Sample DOI click handler
-            sampleDois.forEach(sampleDoi => {
-                sampleDoi.addEventListener('click', function() {
-                    doiInput.value = this.getAttribute('data-doi');
-                    searchCitations();
-                });
+            // Store results
+            let results = [];
+            
+            // Sample DOIs click handler
+            sampleDoisBtn.addEventListener('click', function() {
+                doiTextarea.value = `10.1029/2004JC002692
+10.1029/2005JC002870
+10.1016/j.ocemod.2003.12.006
+10.1016/j.ocemod.2003.12.007
+10.1016/j.ecss.2004.06.009`;
             });
             
             // Search button click handler
-            searchButton.addEventListener('click', searchCitations);
+            searchButton.addEventListener('click', processDOIs);
             
-            // Handle Enter key in input field
-            doiInput.addEventListener('keyup', function(event) {
-                if (event.key === 'Enter') {
-                    searchCitations();
-                }
-            });
+            // Download button click handler
+            downloadButton.addEventListener('click', downloadExcel);
             
-            async function searchCitations() {
-                const doi = doiInput.value.trim();
+            async function processDOIs() {
+                const doiInput = doiTextarea.value.trim();
                 
-                if (!doi) {
-                    showError('Please enter a DOI (Digital Object Identifier)');
+                if (!doiInput) {
+                    showError('Please enter at least one DOI');
                     return;
                 }
                 
-                // Validate DOI format
-                if (!doi.startsWith('10.')) {
-                    showError('Please enter a valid DOI (should start with "10.")');
+                // Split input into array of DOIs
+                const doiLines = doiInput.split('\n')
+                    .map(doi => doi.trim())
+                    .filter(doi => doi !== '');
+                
+                if (doiLines.length === 0) {
+                    showError('No valid DOIs found');
                     return;
                 }
+                
+                // Validate DOIs
+                const validDOIs = [];
+                const invalidDOIs = [];
+                
+                doiLines.forEach(doi => {
+                    if (doi.startsWith('10.')) {
+                        validDOIs.push(doi);
+                    } else {
+                        invalidDOIs.push(doi);
+                    }
+                });
+                
+                if (validDOIs.length === 0) {
+                    showError('No valid DOIs found (DOIs must start with "10.")');
+                    return;
+                }
+                
+                if (invalidDOIs.length > 0) {
+                    showError(`Skipped ${invalidDOIs.length} invalid DOIs: ${invalidDOIs.join(', ')}`);
+                }
+                
+                // Clear previous results
+                results = [];
+                resultsTableBody.innerHTML = '';
+                downloadButton.style.display = 'none';
                 
                 // Show loading indicator
                 loadingIndicator.style.display = 'block';
                 resultContainer.style.display = 'none';
                 errorMessage.style.display = 'none';
+                progressContainer.style.display = 'block';
+                progressText.style.display = 'block';
                 
-                try {
-                    // Fetch citation counts in parallel
-                    const [totalCitations, excludeSelfCitations] = await Promise.all([
-                        fetchCitationCount(doi, false),
-                        fetchCitationCount(doi, true)
-                    ]);
+                // Initialize progress
+                let completed = 0;
+                const total = validDOIs.length;
+                
+                // Process each DOI
+                for (let i = 0; i < validDOIs.length; i++) {
+                    const doi = validDOIs[i];
                     
-                    // Fetch article metadata from citation response
-                    const metadata = await fetchArticleMetadata(doi);
+                    // Update progress
+                    completed = i;
+                    updateProgress(completed, total);
+                    loadingText.textContent = `Processing DOI ${i+1} of ${total}: ${doi}`;
                     
-                    // Update UI with the retrieved data
-                    articleTitle.textContent = metadata.title || "Title not available";
-                    articleType.textContent = metadata.type || "Type not available";
-                    articleYear.textContent = metadata.year || "Year not available";
-                    articleDOI.textContent = doi;
-                    totalCitation.textContent = totalCitations;
-                    excludeSelfCitation.textContent = excludeSelfCitations;
+                    // Add row to table with loading state
+                    addResultRow(i+1, doi, "", "", "", "", "", "loading");
                     
-                    // Show results
-                    resultContainer.style.display = 'block';
-                    loadingIndicator.style.display = 'none';
-                } catch (error) {
-                    showError(error.message);
-                    loadingIndicator.style.display = 'none';
+                    try {
+                        // Fetch citation counts in parallel
+                        const [totalCitations, excludeSelfCitations] = await Promise.all([
+                            fetchCitationCount(doi, false),
+                            fetchCitationCount(doi, true)
+                        ]);
+                        
+                        // Fetch article metadata from citation response
+                        const metadata = await fetchArticleMetadata(doi);
+                        
+                        // Store result
+                        results.push({
+                            number: i+1,
+                            doi: doi,
+                            title: metadata.title || "Title not available",
+                            type: metadata.type || "Type not available",
+                            year: metadata.year || "Year not available",
+                            totalCitations: totalCitations,
+                            excludeSelfCitations: excludeSelfCitations
+                        });
+                        
+                        // Update table row
+                        updateResultRow(i+1, doi, metadata.title || "Title not available", 
+                                       metadata.type || "Type not available", 
+                                       metadata.year || "Year not available", 
+                                       totalCitations, excludeSelfCitations, "success");
+                    } catch (error) {
+                        // Store error result
+                        results.push({
+                            number: i+1,
+                            doi: doi,
+                            title: "Error",
+                            type: "Error",
+                            year: "Error",
+                            totalCitations: "Error",
+                            excludeSelfCitations: "Error",
+                            error: error.message
+                        });
+                        
+                        // Update table row with error
+                        updateResultRow(i+1, doi, "Error retrieving data", 
+                                       "Error", "Error", "Error", "Error", "error", error.message);
+                    }
+                    
+                    // Update progress after each DOI
+                    completed = i+1;
+                    updateProgress(completed, total);
                 }
+                
+                // Hide loading, show results
+                loadingIndicator.style.display = 'none';
+                resultContainer.style.display = 'block';
+                downloadButton.style.display = 'flex';
+                progressContainer.style.display = 'none';
+                progressText.style.display = 'none';
+            }
+            
+            function updateProgress(completed, total) {
+                const percentage = Math.round((completed / total) * 100);
+                progressBar.style.width = `${percentage}%`;
+                progressText.textContent = `Processing: ${completed}/${total} (${percentage}%)`;
+            }
+            
+            function addResultRow(number, doi, title, type, year, totalCitations, excludeSelfCitations, status, errorMsg = "") {
+                const row = document.createElement('tr');
+                row.id = `row-${number}`;
+                
+                row.innerHTML = `
+                    <td>${number}</td>
+                    <td class="doi-cell">${doi}</td>
+                    <td>${title}</td>
+                    <td>${type}</td>
+                    <td>${year}</td>
+                    <td>${totalCitations}</td>
+                    <td>${excludeSelfCitations}</td>
+                    <td class="status-cell">
+                        <i class="fas ${status === 'loading' ? 'fa-spinner fa-spin status-loading' : 
+                                          status === 'success' ? 'fa-check-circle status-success' : 
+                                          'fa-exclamation-circle status-error'}"></i>
+                        ${status === 'loading' ? 'Processing...' : 
+                         status === 'success' ? 'Success' : 'Error'}
+                    </td>
+                `;
+                
+                resultsTableBody.appendChild(row);
+            }
+            
+            function updateResultRow(number, doi, title, type, year, totalCitations, excludeSelfCitations, status, errorMsg = "") {
+                const row = document.getElementById(`row-${number}`);
+                if (!row) return;
+                
+                row.innerHTML = `
+                    <td>${number}</td>
+                    <td class="doi-cell">${doi}</td>
+                    <td>${title}</td>
+                    <td>${type}</td>
+                    <td>${year}</td>
+                    <td>${totalCitations}</td>
+                    <td>${excludeSelfCitations}</td>
+                    <td class="status-cell">
+                        <i class="fas ${status === 'success' ? 'fa-check-circle status-success' : 'fa-exclamation-circle status-error'}"></i>
+                        ${status === 'success' ? 'Success' : 'Error: ' + (errorMsg || 'API issue')}
+                    </td>
+                `;
             }
             
             async function fetchArticleMetadata(doi) {
@@ -603,7 +691,7 @@
                         year: articleData['sort-year'] || "Year not available"
                     };
                 } catch (error) {
-                    throw new Error(`Error retrieving metadata: ${error.message}`);
+                    throw new Error(`Metadata error: ${error.message}`);
                 }
             }
             
@@ -627,14 +715,51 @@
                     
                     return citeCountHeader.grandTotal;
                 } catch (error) {
-                    throw new Error(`Error retrieving citation count: ${error.message}`);
+                    throw new Error(`Citation error: ${error.message}`);
                 }
+            }
+            
+            function downloadExcel() {
+                if (results.length === 0) {
+                    showError('No results to download');
+                    return;
+                }
+                
+                // Prepare worksheet data
+                const wsData = [
+                    ['Number', 'DOI', 'Title', 'Publication Type', 'Publication Year', 'Total Citations', 'Citation (excluding self-citation)']
+                ];
+                
+                results.forEach(result => {
+                    wsData.push([
+                        result.number,
+                        result.doi,
+                        result.title,
+                        result.type,
+                        result.year,
+                        result.totalCitations,
+                        result.excludeSelfCitations
+                    ]);
+                });
+                
+                // Create worksheet
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                
+                // Create workbook
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Citation Metrics");
+                
+                // Download Excel file
+                XLSX.writeFile(wb, "citation_metrics.xlsx");
             }
             
             function showError(message) {
                 errorText.textContent = message;
                 errorMessage.style.display = 'block';
                 resultContainer.style.display = 'none';
+                loadingIndicator.style.display = 'none';
+                progressContainer.style.display = 'none';
+                progressText.style.display = 'none';
             }
         });
     </script>
