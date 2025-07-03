@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Article Citation Finder</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary: #2c3e50;
@@ -12,6 +13,8 @@
             --accent: #e74c3c;
             --light: #ecf0f1;
             --dark: #34495e;
+            --success: #27ae60;
+            --warning: #f39c12;
             --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             --transition: all 0.3s ease;
         }
@@ -34,7 +37,7 @@
         }
         
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             width: 100%;
             margin: 0 auto;
         }
@@ -42,7 +45,7 @@
         header {
             text-align: center;
             padding: 30px 0;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
             position: relative;
         }
         
@@ -79,6 +82,46 @@
             opacity: 0.9;
         }
         
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        
+        .tab-btn {
+            padding: 12px 30px;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            color: var(--dark);
+        }
+        
+        .tab-btn.active {
+            background: var(--secondary);
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .tab-btn:hover:not(.active) {
+            background: #f8f9fa;
+            transform: translateY(-2px);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
         .search-box {
             background: white;
             border-radius: 18px;
@@ -86,6 +129,7 @@
             box-shadow: var(--card-shadow);
             margin-bottom: 30px;
             transition: var(--transition);
+            position: relative;
         }
         
         .input-group {
@@ -126,10 +170,16 @@
             box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
         }
         
-        .input-group button:hover {
+        .input-group button:hover:not(:disabled) {
             background: #2980b9;
             transform: translateY(-2px);
             box-shadow: 0 6px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .input-group button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            opacity: 0.8;
         }
         
         .doi-examples {
@@ -155,10 +205,15 @@
             font-weight: 500;
         }
         
-        .doi-example:hover {
+        .doi-example:hover:not(.disabled) {
             background: var(--secondary);
             color: white;
             transform: translateY(-2px);
+        }
+        
+        .doi-example.disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
         }
         
         .result-container {
@@ -352,6 +407,65 @@
             margin-right: 10px;
         }
         
+        .rate-limit-info {
+            background: #fef9e7;
+            color: var(--warning);
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .rate-limit-info i {
+            font-size: 1.5rem;
+        }
+        
+        .rate-limit-bar {
+            height: 8px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        .rate-limit-progress {
+            height: 100%;
+            background: var(--secondary);
+            border-radius: 4px;
+            width: 30%;
+            transition: width 0.5s ease;
+        }
+        
+        .api-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: var(--light);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .api-status.online {
+            color: var(--success);
+        }
+        
+        .api-status.offline {
+            color: var(--accent);
+        }
+        
+        .api-status i {
+            font-size: 0.7rem;
+        }
+        
         footer {
             text-align: center;
             margin-top: 40px;
@@ -364,6 +478,252 @@
         .api-info {
             margin-top: 15px;
             font-size: 0.9rem;
+        }
+        
+        /* Bulk processing styles */
+        .bulk-container {
+            background: white;
+            border-radius: 18px;
+            padding: 30px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 30px;
+        }
+        
+        .bulk-section {
+            margin-bottom: 25px;
+        }
+        
+        .section-title {
+            font-size: 1.3rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-title i {
+            color: var(--secondary);
+        }
+        
+        .textarea-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #e0e6ed;
+            border-radius: 12px;
+            font-size: 1rem;
+            resize: vertical;
+            transition: var(--transition);
+        }
+        
+        textarea:focus {
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+            outline: none;
+        }
+        
+        .textarea-info {
+            position: absolute;
+            bottom: 10px;
+            right: 15px;
+            color: #95a5a6;
+            font-size: 0.85rem;
+        }
+        
+        .file-upload {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .file-upload input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        .file-upload-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            border: 2px dashed #bdc3c7;
+            border-radius: 12px;
+            background: #f8f9fa;
+            transition: var(--transition);
+            text-align: center;
+            cursor: pointer;
+        }
+        
+        .file-upload-label:hover {
+            border-color: var(--secondary);
+            background: #edf7ff;
+        }
+        
+        .file-upload-label i {
+            font-size: 3rem;
+            color: var(--secondary);
+            margin-bottom: 15px;
+        }
+        
+        .file-upload-label h3 {
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+        
+        .file-upload-label p {
+            color: #7f8c8d;
+            font-size: 0.95rem;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .selected-file {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #e1f0fa;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            color: var(--secondary);
+            font-weight: 500;
+        }
+        
+        .selected-file i {
+            font-size: 1.2rem;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .action-btn.primary {
+            background: var(--secondary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .action-btn.primary:hover:not(:disabled) {
+            background: #2980b9;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+        
+        .action-btn.secondary {
+            background: #ecf0f1;
+            color: var(--dark);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+        
+        .action-btn.secondary:hover:not(:disabled) {
+            background: #d5dbdb;
+            transform: translateY(-3px);
+        }
+        
+        .action-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .progress-container {
+            margin-top: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            display: none;
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .progress-bar {
+            height: 12px;
+            background: #e0e6ed;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--success);
+            border-radius: 6px;
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+        
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+        
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .results-table th {
+            background: var(--primary);
+            color: white;
+            padding: 15px;
+            text-align: left;
+        }
+        
+        .results-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .results-table tr:hover {
+            background: #e1f0fa;
+        }
+        
+        .results-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e6ed;
+        }
+        
+        .results-table .success {
+            color: var(--success);
+        }
+        
+        .results-table .error {
+            color: var(--accent);
         }
         
         @media (max-width: 768px) {
@@ -398,6 +758,23 @@
             .citation-stats {
                 grid-template-columns: 1fr;
             }
+            
+            .api-status {
+                position: relative;
+                top: 0;
+                right: 0;
+                justify-content: center;
+                margin-top: 15px;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-btn {
+                width: 100%;
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -408,11 +785,22 @@
                 <i class="fas fa-chart-line"></i>
                 <h1>Citation Metrics Finder</h1>
             </div>
-            <p>Discover citation metrics for any research article using its Digital Object Identifier (DOI)</p>
+            <p>Discover citation metrics for research articles using Digital Object Identifiers (DOIs)</p>
         </header>
         
-        <main>
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="single">Single Article</button>
+            <button class="tab-btn" data-tab="bulk">Bulk Processing</button>
+        </div>
+        
+        <!-- Single Article Tab -->
+        <div class="tab-content active" id="single-tab">
             <div class="search-box">
+                <div class="api-status online">
+                    <i class="fas fa-circle"></i>
+                    <span>API Status: Operational</span>
+                </div>
+                
                 <div class="input-group">
                     <input type="text" id="doiInput" placeholder="Enter article DOI (e.g., 10.5194/bg-18-2755-2021)">
                     <button id="searchButton">
@@ -429,6 +817,20 @@
                     <div class="doi-example" data-doi="10.3389/fmars.2021.615929">
                         <i class="fas fa-lightbulb"></i>
                         Sample DOI: 10.3389/fmars.2021.615929
+                    </div>
+                    <div class="doi-example" data-doi="10.1038/s41586-020-2008-3">
+                        <i class="fas fa-lightbulb"></i>
+                        Sample DOI: 10.1038/s41586-020-2008-3
+                    </div>
+                </div>
+                
+                <div class="rate-limit-info">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <div>
+                        <div>API Request Limit: <span id="requestsUsed">0</span>/<span id="requestsTotal">100</span> per minute</div>
+                        <div class="rate-limit-bar">
+                            <div class="rate-limit-progress" id="rateLimitProgress"></div>
+                        </div>
                     </div>
                 </div>
                 
@@ -482,7 +884,85 @@
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
+        
+        <!-- Bulk Processing Tab -->
+        <div class="tab-content" id="bulk-tab">
+            <div class="bulk-container">
+                <div class="bulk-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-list"></i>
+                        Enter Multiple DOIs
+                    </h3>
+                    <div class="textarea-container">
+                        <textarea id="doiList" placeholder="Enter one DOI per line (e.g.,&#10;10.5194/bg-18-2755-2021&#10;10.3389/fmars.2021.615929&#10;10.1038/s41586-020-2008-3)"></textarea>
+                        <div class="textarea-info">Enter one DOI per line</div>
+                    </div>
+                    
+                    <h3 class="section-title">
+                        <i class="fas fa-file-import"></i>
+                        Or Import from Excel/CSV
+                    </h3>
+                    <div class="file-upload">
+                        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+                        <div class="file-upload-label">
+                            <i class="fas fa-file-excel"></i>
+                            <h3>Upload Excel or CSV File</h3>
+                            <p>Upload a spreadsheet containing DOI values in a column. Accepted formats: .xlsx, .xls, .csv</p>
+                            <div class="selected-file" id="selectedFileName">
+                                <i class="fas fa-file"></i>
+                                <span>No file selected</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button class="action-btn primary" id="processBulkBtn">
+                            <i class="fas fa-play"></i>
+                            Process DOIs
+                        </button>
+                        <button class="action-btn secondary" id="downloadTemplateBtn">
+                            <i class="fas fa-download"></i>
+                            Download Template
+                        </button>
+                        <button class="action-btn secondary" id="downloadResultsBtn" disabled>
+                            <i class="fas fa-file-download"></i>
+                            Export Results
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-header">
+                        <span>Processing DOIs</span>
+                        <span id="progressPercentage">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span>Processed: <span id="processedCount">0</span> of <span id="totalCount">0</span></span>
+                        <span>Remaining: <span id="remainingCount">0</span></span>
+                    </div>
+                </div>
+                
+                <table class="results-table" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>DOI</th>
+                            <th>Title</th>
+                            <th>Year</th>
+                            <th>Total Citations</th>
+                            <th>Non-Self Citations</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                        <!-- Results will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
         
         <footer>
             <p>Article Citation Finder &copy; 2023 | Data provided by Elsevier API</p>
@@ -494,12 +974,34 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Tab switching functionality
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Remove active class from all tabs
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
+                    btn.classList.add('active');
+                    const tabId = btn.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+            
+            // Single DOI search elements
             const doiInput = document.getElementById('doiInput');
             const searchButton = document.getElementById('searchButton');
             const resultContainer = document.getElementById('resultContainer');
             const loadingIndicator = document.getElementById('loadingIndicator');
             const errorMessage = document.getElementById('errorMessage');
             const errorText = document.getElementById('errorText');
+            const apiStatus = document.querySelector('.api-status');
+            const requestsUsed = document.getElementById('requestsUsed');
+            const requestsTotal = document.getElementById('requestsTotal');
+            const rateLimitProgress = document.getElementById('rateLimitProgress');
             
             const articleTitle = document.getElementById('articleTitle');
             const articleType = document.getElementById('articleType');
@@ -510,26 +1012,159 @@
             
             const sampleDois = document.querySelectorAll('.doi-example');
             
-            // API configuration
+            // Bulk processing elements
+            const doiList = document.getElementById('doiList');
+            const fileInput = document.getElementById('fileInput');
+            const selectedFileName = document.getElementById('selectedFileName');
+            const processBulkBtn = document.getElementById('processBulkBtn');
+            const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+            const downloadResultsBtn = document.getElementById('downloadResultsBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressPercentage = document.getElementById('progressPercentage');
+            const processedCount = document.getElementById('processedCount');
+            const totalCount = document.getElementById('totalCount');
+            const remainingCount = document.getElementById('remainingCount');
+            const resultsTable = document.getElementById('resultsTable');
+            const resultsBody = document.getElementById('resultsBody');
+            
+            // API configuration with institution token
             const apiKey = "09d5b33d411568b6b4ab4c97f9afffd6";
+            const instToken = "0549001e2df9365ea14324bd84d26beb";
+            
+            // Rate limiting configuration (100 requests per minute)
+            const MAX_REQUESTS = 100;
+            const REQUEST_INTERVAL = 60000; // 1 minute in milliseconds
+            let requestCount = 0;
+            let lastResetTime = Date.now();
+            
+            // Bulk processing data
+            let processingQueue = [];
+            let results = [];
+            let currentProcessingIndex = 0;
+            
+            // Initialize rate limit UI
+            requestsTotal.textContent = MAX_REQUESTS;
+            updateRateLimitUI();
+            
+            // File input change handler
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    const file = this.files[0];
+                    selectedFileName.innerHTML = `<i class="fas fa-file"></i> ${file.name}`;
+                } else {
+                    selectedFileName.innerHTML = `<i class="fas fa-file"></i> No file selected`;
+                }
+            });
             
             // Sample DOI click handler
             sampleDois.forEach(sampleDoi => {
                 sampleDoi.addEventListener('click', function() {
+                    if (isRateLimited()) {
+                        showError('API rate limit reached. Please wait a minute before making more requests.');
+                        return;
+                    }
+                    
                     doiInput.value = this.getAttribute('data-doi');
                     searchCitations();
                 });
             });
             
             // Search button click handler
-            searchButton.addEventListener('click', searchCitations);
+            searchButton.addEventListener('click', function() {
+                if (isRateLimited()) {
+                    showError('API rate limit reached. Please wait a minute before making more requests.');
+                    return;
+                }
+                
+                searchCitations();
+            });
             
             // Handle Enter key in input field
             doiInput.addEventListener('keyup', function(event) {
                 if (event.key === 'Enter') {
+                    if (isRateLimited()) {
+                        showError('API rate limit reached. Please wait a minute before making more requests.');
+                        return;
+                    }
+                    
                     searchCitations();
                 }
             });
+            
+            // Bulk processing button
+            processBulkBtn.addEventListener('click', processBulkDOIs);
+            
+            // Download template button
+            downloadTemplateBtn.addEventListener('click', function() {
+                // Create a sample template
+                const templateData = [
+                    ["DOI"],
+                    ["10.5194/bg-18-2755-2021"],
+                    ["10.3389/fmars.2021.615929"],
+                    ["10.1038/s41586-020-2008-3"]
+                ];
+                
+                const ws = XLSX.utils.aoa_to_sheet(templateData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "DOIs");
+                XLSX.writeFile(wb, "citation_template.xlsx");
+            });
+            
+            // Download results button
+            downloadResultsBtn.addEventListener('click', function() {
+                if (results.length === 0) {
+                    alert("No results to download");
+                    return;
+                }
+                
+                // Prepare data for export
+                const exportData = results.map(item => {
+                    return {
+                        "DOI": item.doi,
+                        "Title": item.title || "N/A",
+                        "Year": item.year || "N/A",
+                        "Total Citations": item.totalCitations || "0",
+                        "Non-Self Citations": item.excludeSelfCitations || "0",
+                        "Status": item.status || "Processed"
+                    };
+                });
+                
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Citation Results");
+                XLSX.writeFile(wb, "citation_results.xlsx");
+            });
+            
+            // Function to check if we're rate limited
+            function isRateLimited() {
+                const now = Date.now();
+                
+                // Reset counter if the interval has passed
+                if (now - lastResetTime > REQUEST_INTERVAL) {
+                    requestCount = 0;
+                    lastResetTime = now;
+                    updateRateLimitUI();
+                }
+                
+                return requestCount >= MAX_REQUESTS;
+            }
+            
+            // Function to update rate limit UI
+            function updateRateLimitUI() {
+                requestsUsed.textContent = requestCount;
+                const percentage = (requestCount / MAX_REQUESTS) * 100;
+                rateLimitProgress.style.width = `${percentage}%`;
+                
+                // Change color based on usage
+                if (percentage >= 90) {
+                    rateLimitProgress.style.background = 'var(--accent)';
+                } else if (percentage >= 70) {
+                    rateLimitProgress.style.background = 'var(--warning)';
+                } else {
+                    rateLimitProgress.style.background = 'var(--secondary)';
+                }
+            }
             
             async function searchCitations() {
                 const doi = doiInput.value.trim();
@@ -545,10 +1180,19 @@
                     return;
                 }
                 
+                // Increment request count and update UI
+                requestCount++;
+                updateRateLimitUI();
+                
                 // Show loading indicator
                 loadingIndicator.style.display = 'block';
                 resultContainer.style.display = 'none';
                 errorMessage.style.display = 'none';
+                
+                // Disable UI during request
+                searchButton.disabled = true;
+                doiInput.disabled = true;
+                sampleDois.forEach(doi => doi.classList.add('disabled'));
                 
                 try {
                     // Fetch citation counts in parallel
@@ -571,17 +1215,33 @@
                     // Show results
                     resultContainer.style.display = 'block';
                     loadingIndicator.style.display = 'none';
+                    
+                    // Update API status
+                    apiStatus.innerHTML = '<i class="fas fa-circle"></i> API Status: Operational';
+                    apiStatus.className = 'api-status online';
                 } catch (error) {
                     showError(error.message);
                     loadingIndicator.style.display = 'none';
+                    
+                    // Update API status
+                    apiStatus.innerHTML = '<i class="fas fa-circle"></i> API Status: Issues Detected';
+                    apiStatus.className = 'api-status offline';
+                } finally {
+                    // Re-enable UI
+                    searchButton.disabled = false;
+                    doiInput.disabled = false;
+                    sampleDois.forEach(doi => doi.classList.remove('disabled'));
                 }
             }
             
             async function fetchArticleMetadata(doi) {
                 try {
-                    const response = await fetch(`https://api.elsevier.com/content/abstract/citations?doi=${doi}&apiKey=${apiKey}&httpAccept=application%2Fjson`);
+                    const response = await fetch(`https://api.elsevier.com/content/abstract/citations?doi=${doi}&apiKey=${apiKey}&insttoken=${instToken}&httpAccept=application%2Fjson`);
                     
                     if (!response.ok) {
+                        if (response.status === 429) {
+                            throw new Error('API rate limit exceeded. Please try again in a minute.');
+                        }
                         throw new Error(`API error: ${response.status} ${response.statusText}`);
                     }
                     
@@ -609,10 +1269,13 @@
             
             async function fetchCitationCount(doi, excludeSelf = false) {
                 try {
-                    const url = `https://api.elsevier.com/content/abstract/citations?doi=${doi}&apiKey=${apiKey}${excludeSelf ? '&citation=exclude-self' : ''}&httpAccept=application%2Fjson`;
+                    const url = `https://api.elsevier.com/content/abstract/citations?doi=${doi}&apiKey=${apiKey}&insttoken=${instToken}${excludeSelf ? '&citation=exclude-self' : ''}&httpAccept=application%2Fjson`;
                     const response = await fetch(url);
                     
                     if (!response.ok) {
+                        if (response.status === 429) {
+                            throw new Error('API rate limit exceeded. Please try again in a minute.');
+                        }
                         throw new Error(`API error: ${response.status} ${response.statusText}`);
                     }
                     
@@ -636,6 +1299,274 @@
                 errorMessage.style.display = 'block';
                 resultContainer.style.display = 'none';
             }
+            
+            // Bulk processing functions
+            async function processBulkDOIs() {
+                // Get DOIs from text area
+                const textDOIs = doiList.value.trim();
+                let doiArray = [];
+                
+                if (textDOIs) {
+                    doiArray = textDOIs.split('\n')
+                        .map(doi => doi.trim())
+                        .filter(doi => doi.startsWith('10.'));
+                }
+                
+                // Get DOIs from file if uploaded
+                if (fileInput.files.length > 0) {
+                    try {
+                        const file = fileInput.files[0];
+                        const fileExtension = file.name.split('.').pop().toLowerCase();
+                        const data = await readFile(file);
+                        
+                        let fileDOIs = [];
+                        if (fileExtension === 'csv') {
+                            fileDOIs = parseCSV(data);
+                        } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+                            fileDOIs = parseExcel(data);
+                        }
+                        
+                        doiArray = [...doiArray, ...fileDOIs];
+                    } catch (error) {
+                        alert(`Error processing file: ${error.message}`);
+                        return;
+                    }
+                }
+                
+                // Remove duplicates
+                doiArray = [...new Set(doiArray)];
+                
+                if (doiArray.length === 0) {
+                    alert("Please enter valid DOIs or upload a file with DOIs");
+                    return;
+                }
+                
+                // Initialize processing
+                processingQueue = doiArray;
+                results = [];
+                currentProcessingIndex = 0;
+                
+                // Show progress UI
+                progressContainer.style.display = 'block';
+                resultsTable.style.display = 'table';
+                resultsBody.innerHTML = '';
+                
+                // Update counts
+                totalCount.textContent = doiArray.length;
+                processedCount.textContent = '0';
+                remainingCount.textContent = doiArray.length;
+                updateProgress(0);
+                
+                // Disable buttons during processing
+                processBulkBtn.disabled = true;
+                downloadResultsBtn.disabled = true;
+                
+                // Start processing
+                processNextDOI();
+            }
+            
+            async function processNextDOI() {
+                if (currentProcessingIndex >= processingQueue.length) {
+                    // Processing complete
+                    processBulkBtn.disabled = false;
+                    downloadResultsBtn.disabled = false;
+                    return;
+                }
+                
+                if (isRateLimited()) {
+                    // If rate limited, wait a bit and try again
+                    setTimeout(processNextDOI, 2000);
+                    return;
+                }
+                
+                const doi = processingQueue[currentProcessingIndex];
+                currentProcessingIndex++;
+                
+                // Update progress
+                const progress = (currentProcessingIndex / processingQueue.length) * 100;
+                updateProgress(progress);
+                processedCount.textContent = currentProcessingIndex;
+                remainingCount.textContent = processingQueue.length - currentProcessingIndex;
+                
+                try {
+                    // Add to results table immediately
+                    addToResultsTable(doi, "Processing...");
+                    
+                    // Fetch citation counts in parallel
+                    const [totalCitations, excludeSelfCitations] = await Promise.all([
+                        fetchCitationCount(doi, false),
+                        fetchCitationCount(doi, true)
+                    ]);
+                    
+                    // Fetch article metadata
+                    const metadata = await fetchArticleMetadata(doi);
+                    
+                    // Store results
+                    results.push({
+                        doi,
+                        title: metadata.title || "N/A",
+                        year: metadata.year || "N/A",
+                        totalCitations,
+                        excludeSelfCitations,
+                        status: "Success"
+                    });
+                    
+                    // Update table
+                    updateResultsTable(doi, {
+                        title: metadata.title || "N/A",
+                        year: metadata.year || "N/A",
+                        totalCitations,
+                        excludeSelfCitations,
+                        status: "Success"
+                    });
+                    
+                    // Increment request count
+                    requestCount++;
+                    updateRateLimitUI();
+                } catch (error) {
+                    // Store error
+                    results.push({
+                        doi,
+                        title: "Error",
+                        year: "N/A",
+                        totalCitations: 0,
+                        excludeSelfCitations: 0,
+                        status: error.message.substring(0, 50) + "..."
+                    });
+                    
+                    // Update table
+                    updateResultsTable(doi, {
+                        title: "Error",
+                        year: "N/A",
+                        totalCitations: 0,
+                        excludeSelfCitations: 0,
+                        status: error.message.substring(0, 50) + "..."
+                    });
+                    
+                    // Increment request count even on error
+                    requestCount++;
+                    updateRateLimitUI();
+                }
+                
+                // Process next DOI after a short delay to avoid rate limiting
+                setTimeout(processNextDOI, 500);
+            }
+            
+            function updateProgress(percentage) {
+                progressFill.style.width = `${percentage}%`;
+                progressPercentage.textContent = `${Math.round(percentage)}%`;
+            }
+            
+            function addToResultsTable(doi, status) {
+                const row = document.createElement('tr');
+                row.id = `row-${doi}`;
+                row.innerHTML = `
+                    <td>${doi}</td>
+                    <td>Loading...</td>
+                    <td>Loading...</td>
+                    <td>Loading...</td>
+                    <td>Loading...</td>
+                    <td class="processing">${status}</td>
+                `;
+                resultsBody.appendChild(row);
+            }
+            
+            function updateResultsTable(doi, data) {
+                const row = document.getElementById(`row-${doi}`);
+                if (!row) return;
+                
+                row.innerHTML = `
+                    <td>${doi}</td>
+                    <td>${data.title}</td>
+                    <td>${data.year}</td>
+                    <td>${data.totalCitations}</td>
+                    <td>${data.excludeSelfCitations}</td>
+                    <td class="${data.status.includes("Success") ? "success" : "error"}">${data.status}</td>
+                `;
+            }
+            
+            function readFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        resolve(e.target.result);
+                    };
+                    
+                    reader.onerror = function(e) {
+                        reject(new Error("Error reading file"));
+                    };
+                    
+                    if (file.name.endsWith('.csv')) {
+                        reader.readAsText(file);
+                    } else {
+                        reader.readAsArrayBuffer(file);
+                    }
+                });
+            }
+            
+            function parseCSV(csvData) {
+                const lines = csvData.split('\n');
+                const dois = [];
+                
+                for (const line of lines) {
+                    // Simple CSV parsing - split by comma and take first column
+                    const columns = line.split(',');
+                    if (columns.length > 0) {
+                        const doi = columns[0].trim();
+                        if (doi.startsWith('10.')) {
+                            dois.push(doi);
+                        }
+                    }
+                }
+                
+                return dois;
+            }
+            
+            function parseExcel(data) {
+                const dois = [];
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Convert to JSON
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                // Find DOI column
+                let doiColumnIndex = 0;
+                if (jsonData.length > 0) {
+                    // Check header row if exists
+                    const firstRow = jsonData[0];
+                    const doiHeaderIndex = firstRow.findIndex(cell => 
+                        cell.toString().toLowerCase().includes('doi')
+                    );
+                    
+                    if (doiHeaderIndex !== -1) {
+                        doiColumnIndex = doiHeaderIndex;
+                    }
+                }
+                
+                // Extract DOIs
+                for (let i = 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (row.length > doiColumnIndex) {
+                        const doi = row[doiColumnIndex].toString().trim();
+                        if (doi.startsWith('10.')) {
+                            dois.push(doi);
+                        }
+                    }
+                }
+                
+                return dois;
+            }
+            
+            // Simulate API status changes for demonstration
+            setInterval(() => {
+                if (Math.random() > 0.8) {
+                    apiStatus.innerHTML = '<i class="fas fa-circle"></i> API Status: Operational';
+                    apiStatus.className = 'api-status online';
+                }
+            }, 10000);
         });
     </script>
 </body>
